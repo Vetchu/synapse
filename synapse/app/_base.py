@@ -47,6 +47,7 @@ from twisted.internet.tcp import Port
 from twisted.logger import LoggingFile, LogLevel
 from twisted.protocols.tls import TLSMemoryBIOFactory
 from twisted.python.threadpool import ThreadPool
+from typing_extensions import ParamSpec
 
 from synapse.api.constants import MAX_PDU_SIZE
 from synapse.app import check_bind_error
@@ -81,11 +82,12 @@ logger = logging.getLogger(__name__)
 
 # list of tuples of function, args list, kwargs dict
 _sighup_callbacks: List[
-    Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]
+    Tuple[Callable[..., None], Tuple[object, ...], Dict[str, object]]
 ] = []
+P = ParamSpec("P")
 
 
-def register_sighup(func: Callable[..., None], *args: Any, **kwargs: Any) -> None:
+def register_sighup(func: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
     """
     Register a function to be called when a SIGHUP occurs.
 
@@ -93,7 +95,9 @@ def register_sighup(func: Callable[..., None], *args: Any, **kwargs: Any) -> Non
         func: Function to be called when sent a SIGHUP signal.
         *args, **kwargs: args and kwargs to be passed to the target function.
     """
-    _sighup_callbacks.append((func, args, kwargs))
+    # This type-ignore should be redundant once we use a mypy release with
+    # https://github.com/python/mypy/pull/12668.
+    _sighup_callbacks.append((func, args, kwargs))  # type: ignore[arg-type]
 
 
 def start_worker_reactor(
